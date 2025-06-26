@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block title %}Payment Details{% endblock %}
+
+{% block content %}
+<div class="p-4 sm:p-6  min-h-screen">
+
+<!-- Page Header -->
+<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+  <h1 class="text-2xl font-bold text-primary">Payment Records</h1>
+
+  <!-- Action Buttons -->
+  <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+    <a href="{% url 'collect-payment-page' %}" class="flex items-center justify-center gap-2 bg-primary hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow w-full sm:w-auto text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Receive Payment
+    </a>
+    <button onclick="openModal()" class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow w-full sm:w-auto text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/>
+      </svg>
+      Set Monthly Amount
+    </button>
+    <button onclick="openFilterModal()" class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow w-full sm:hidden text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M6 8h12M9 12h6M12 16h0"/>
+      </svg>
+      Filter
+    </button>
+    <a href="{% url 'export-payments' %}?q={{ query }}&status={{ status }}"
+      class="flex items-center justify-center bg-teal-800 hover:bg-[#c3ab71] text-white px-4 py-2 rounded text-sm shadow">
+      Export CSV
+    </a>
+  </div>
+</div>
+
+<!-- Filter Button for larger screens -->
+<div class="hidden sm:block mb-4">
+  <button onclick="openFilterModal()" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M6 8h12M9 12h6M12 16h0"/>
+    </svg>
+    Filter Records
+  </button>
+</div>
+
+
+  <!-- Set Monthly Amount Modal -->
+  <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40" onclick="closeModal()"></div>
+  <div id="modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4">
+      <div class="border-b px-6 py-4 flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-gray-800">Set Monthly Amount</h2>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+      </div>
+      <form method="POST" action="{% url 'set-monthly-amount' %}" class="px-6 py-4 space-y-4">
+        {% csrf_token %}
+        <div>
+          <label for="amount" class="block font-medium text-gray-700">Amount (₹)</label>
+          <input type="number" id="amount" name="amount" required min="1" value="{{ current_amount.amount }}"
+            class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" onclick="closeModal()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
+            Cancel
+          </button>
+          <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700">
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Filter Modal -->
+  <div id="filter-modal-overlay" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40" onclick="closeFilterModal()"></div>
+  <div id="filter-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-3xl mx-4">
+      <div class="border-b px-6 py-4 flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-gray-800">Filter Payments</h2>
+        <button onclick="closeFilterModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+      </div>
+      <form method="get" class="px-6 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% csrf_token %}
+        <input type="text" name="member_name" placeholder="Member Name" value="{{ request.GET.member_name }}" class="border border-gray-300 rounded-lg px-3 py-2 w-full">
+        <input type="text" name="member_phone" placeholder="Phone" value="{{ request.GET.member_phone }}" class="border border-gray-300 rounded-lg px-3 py-2 w-full">
+        <input type="text" name="member_id" placeholder="Member ID" value="{{ request.GET.member_id }}" class="border border-gray-300 rounded-lg px-3 py-2 w-full">
+
+        <select name="year" class="border border-gray-300 rounded-lg px-3 py-2 w-full">
+          <option value="">Year</option>
+          {% for y in year_range %}
+            <option value="{{ y }}" {% if request.GET.year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+
+        <select name="start_month" class="border border-gray-300 rounded-lg px-3 py-2 w-full">
+          <option value="">Start Month</option>
+          {% for num, name in months %}
+            <option value="{{ num }}" {% if request.GET.start_month == num|stringformat:"s" %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+
+        <select name="end_month" class="border border-gray-300 rounded-lg px-3 py-2 w-full">
+          <option value="">End Month</option>
+          {% for num, name in months %}
+            <option value="{{ num }}" {% if request.GET.end_month == num|stringformat:"s" %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+
+        <div class="sm:col-span-2 lg:col-span-3 flex justify-end gap-2 mt-2">
+          <button type="button" onclick="closeFilterModal()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
+            Cancel
+          </button>
+          <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700">
+            Apply Filter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Payment Table -->
+  {% if details %}
+    <div class="overflow-x-auto bg-white rounded-xl shadow">
+      <table class="min-w-full text-sm text-left text-gray-700">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-4 py-3 font-semibold">Member ID</th>
+            <th class="px-4 py-3 font-semibold">Name</th>
+            <th class="px-4 py-3 font-semibold">Phone</th>
+            <th class="px-4 py-3 font-semibold">Year</th>
+            <th class="px-4 py-3 font-semibold">Month</th>
+            <th class="px-4 py-3 font-semibold">Amount</th>
+            <th class="px-4 py-3 font-semibold">Status</th>
+            <th class="px-4 py-3 font-semibold">Date Paid</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in details %}
+          <tr class="border-b hover:bg-gray-50">
+            <td class="px-4 py-2">{{ payment.member.member_id }}</td>
+            <td class="px-4 py-2">{{ payment.member.member_name }}</td>
+            <td class="px-4 py-2">{{ payment.member.member_phone }}</td>
+            <td class="px-4 py-2">{{ payment.year }}</td>
+            <td class="px-4 py-2">{{ payment.get_month_display }}</td>
+            <td class="px-4 py-2">₹{{ payment.amount }}</td>
+            <td class="px-4 py-2">
+              {% if payment.paid %}
+                <span class="text-emerald-600 font-semibold">Paid</span>
+              {% else %}
+                <span class="text-red-500 font-semibold">Pending</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-2">{{ payment.paid_on|date:"Y-m-d" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if details.has_other_pages %}
+      <div class="flex justify-between items-center mt-6 text-sm text-gray-600">
+        <span>Page {{ details.number }} of {{ details.paginator.num_pages }}</span>
+        <div class="flex space-x-2">
+          {% if details.has_previous %}
+            <a href="?page={{ details.previous_page_number }}&{{ request.GET.urlencode|cut:'page='|urlencode }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Previous</a>
+          {% endif %}
+          {% if details.has_next %}
+            <a href="?page={{ details.next_page_number }}&{{ request.GET.urlencode|cut:'page='|urlencode }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <p class="text-gray-600 mt-6 text-center">No payment records found for the selected filters.</p>
+  {% endif %}
+</div>
+
+<!-- Modal Scripts -->
+<script>
+function openModal() {
+  document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+function openFilterModal() {
+  document.getElementById('filter-modal').classList.remove('hidden');
+  document.getElementById('filter-modal-overlay').classList.remove('hidden');
+}
+function closeFilterModal() {
+  document.getElementById('filter-modal').classList.add('hidden');
+  document.getElementById('filter-modal-overlay').classList.add('hidden');
+}
+</script>
+{% endblock %}

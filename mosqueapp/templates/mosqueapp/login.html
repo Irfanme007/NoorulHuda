@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marhey:wght@300..700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-slate-100 to-slate-300 font-sans h-screen w-screen overflow-hidden">
+  <div class="flex h-full max-w-6xl mx-auto rounded-xl shadow-2xl overflow-hidden bg-white">
+
+    <!-- Left: Image -->
+    <div class="hidden lg:block w-1/2 bg-cover bg-center" style="background-image: url('{% static 'icons/logo-image.png' %}');"></div>
+
+    <!-- Right: Form Container -->
+    <div class="w-full lg:w-1/2 flex items-center justify-center p-8">
+      <div class="w-full max-w-md space-y-6">
+
+        <!-- Logo -->
+        <div class="flex flex-col items-center space-y-1">
+          <img src="{% static 'icons/noor-logo.png' %}" alt="Logo" class="h-16 w-auto">
+        <p class="text-l text-gray-800 font-medium" style="font-family: 'Marhey', sans-serif;">"نور الهدى مدرسة"</p>
+        </div>
+
+        <!-- Title -->
+        <h2 class="text-2xl font-extrabold text-center text-violet-700">Administrator Login</h2>
+
+        <!-- Messages -->
+        {% if messages %}
+          {% for message in messages %}
+            {% if 'login_message' in message.extra_tags %}
+              <div class="text-white text-sm p-3 rounded-md text-center
+                {% if message.tags == 'error' %}
+                  bg-red-500
+                {% elif message.tags == 'success' %}
+                  bg-green-500
+                {% else %}
+                  bg-gray-500
+                {% endif %}">
+                {{ message }}
+              </div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+
+        <!-- Login Form -->
+        <form method="post" class="space-y-5">
+          {% csrf_token %}
+          <div>
+            <label for="username" class="block text-gray-700 text-sm font-semibold mb-1">Username</label>
+            <input type="text" name="username" id="username" required placeholder="Enter Username"
+              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition duration-200">
+          </div>
+
+          <div class="relative">
+            <label for="password" class="block text-gray-700 text-sm font-semibold mb-1">Password</label>
+            <input type="password" name="password" id="password" required placeholder="Enter Password"
+              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 pr-10 transition duration-200">
+            <span onclick="togglePassword()" class="absolute right-3 top-9 transform -translate-y-1/2 cursor-pointer text-gray-500 hover:text-gray-700">
+              <!-- Eye Open -->
+              <svg id="eyeOpen" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M2.05 12.32a10.97 10.97 0 0119.9 0 10.97 10.97 0 01-19.9 0z" />
+              </svg>
+              <!-- Eye Closed -->
+              <svg id="eyeClosed" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M3 3l18 18M10.477 10.477A3 3 0 0113.5 13.5M9.879 9.879a3 3 0 014.242 4.242m-9.9-4.243A10.451 10.451 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498A10.51 10.51 0 0112 19.5a10.451 10.451 0 01-7.879-3.771" />
+              </svg>
+            </span>
+          </div>
+
+          <a href="{% url 'password_reset' %}" class="block text-sm text-violet-600 hover:underline text-right">Forgot password?</a>
+
+          <!-- Buttons -->
+          <div class="flex flex-col space-y-3">
+            <button type="submit" id="loginBtn"
+              class="bg-violet-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 transition duration-300 flex justify-center items-center">
+              <span id="btnText">Sign In</span>
+              <span id="btnLoader" class="hidden animate-spin ml-2 w-5 h-5 border-2 border-white border-t-transparent rounded-full"></span>
+            </button>
+            <button type="reset"
+              class="bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 transition duration-300">Clear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    function togglePassword() {
+      const passwordInput = document.getElementById("password");
+      const eyeOpen = document.getElementById("eyeOpen");
+      const eyeClosed = document.getElementById("eyeClosed");
+
+      if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        eyeOpen.classList.add("hidden");
+        eyeClosed.classList.remove("hidden");
+      } else {
+        passwordInput.type = "password";
+        eyeOpen.classList.remove("hidden");
+        eyeClosed.classList.add("hidden");
+      }
+    }
+
+    document.querySelector('form').addEventListener('submit', function () {
+      const loginBtn = document.getElementById('loginBtn');
+      const btnText = document.getElementById('btnText');
+      const btnLoader = document.getElementById('btnLoader');
+      loginBtn.disabled = true;
+      loginBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      btnText.classList.add('hidden');
+      btnLoader.classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

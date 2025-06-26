@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block title %}Collect Payment{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mt-10 bg-[#f1ead7] shadow-md rounded-xl p-6 space-y-6">
+  <h2 class="text-2xl font-semibold text-[#5f4b8b] flex items-center gap-2">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#5f4b8b]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.1 0 2 .9 2 2v6h2v-6c0-2.2-1.8-4-4-4s-4 1.8-4 4v6h2v-6c0-1.1.9-2 2-2z"/>
+    </svg>
+    Collect Payment
+  </h2>
+
+  <form id="payment-form" method="post" action="{% url 'collect-payment' %}">
+    {% csrf_token %}
+
+    <!-- Member ID Input -->
+    <div>
+      <label class="block text-sm font-medium text-[#333]">Member ID</label>
+      <div class="relative mt-1">
+        <input id="member_id" name="member_id" type="text" required
+               class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-[#5f4b8b] pr-10 focus:outline-none" />
+        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M21 21l-6-6M3 10a7 7 0 1014 0 7 7 0 00-14 0z"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Member Info -->
+    <div id="member-info" class="text-gray-600 italic mt-1 text-sm"></div>
+
+    <!-- Year Selection -->
+    <div>
+      <label class="block text-sm font-medium text-[#333] mt-4">Year</label>
+      <select id="year" name="year" required class="mt-1 w-full border border-gray-300 rounded px-3 py-2 focus:ring-[#5f4b8b] focus:outline-none">
+        {% for y in year_range %}
+          <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Months Selection -->
+    <div>
+      <label class="block text-sm font-medium text-[#333] mt-4">Months</label>
+      <div id="months-container" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-2"></div>
+    </div>
+
+    <!-- Submit and Cancel -->
+    <div class="flex flex-col sm:flex-row gap-3 mt-4">
+      <button type="submit"
+              class="w-full bg-[#5f4b8b] hover:bg-[#4b3a6a] text-white py-2 rounded font-medium shadow">
+        Submit Payment
+      </button>
+      <a href="{% url 'payment-details' %}"
+         class="w-full bg-gray-300 hover:bg-gray-400 text-[#333] py-2 rounded font-medium shadow text-center">
+        Cancel
+      </a>
+    </div>
+  </form>
+
+  <!-- Status Message -->
+  <div id="status-message" class="mt-4 text-sm font-medium"></div>
+</div>
+
+<script>
+  const memberIdInput = document.getElementById("member_id");
+  const yearSelect = document.getElementById("year");
+  const memberInfo = document.getElementById("member-info");
+  const monthsContainer = document.getElementById("months-container");
+  const statusMessage = document.getElementById("status-message");
+  const form = document.getElementById("payment-form");
+
+  async function fetchPayments() {
+    const memberId = memberIdInput.value.trim();
+    const year = yearSelect.value;
+
+    if (!memberId) return;
+
+    try {
+      const infoRes = await fetch(`/fetch_member_info/?member_id=${memberId}`);
+      const infoData = await infoRes.json();
+
+      if (!infoRes.ok || infoData.error) {
+        memberInfo.innerHTML = `<span class="text-red-600">❌ ${infoData.error || 'Member not found'}</span>`;
+        monthsContainer.innerHTML = '';
+        return;
+      }
+
+      memberInfo.innerHTML = `<span class="text-green-700 font-medium">✅ ${infoData.name} (${infoData.phone})</span>`;
+
+      const payRes = await fetch(`/get_member_payments_for_year/?member_id=${memberId}&year=${year}`);
+      const payData = await payRes.json();
+
+      if (!payRes.ok || payData.error) {
+        monthsContainer.innerHTML = '';
+        statusMessage.innerHTML = `<span class="text-red-600">❌ ${payData.error || 'Payment data error'}</span>`;
+        return;
+      }
+
+      buildMonthsUI(payData.payments);
+
+    } catch (err) {
+      statusMessage.innerHTML = `<span class="text-red-600">❌ Network error</span>`;
+    }
+  }
+
+  function buildMonthsUI(payments) {
+    monthsContainer.innerHTML = '';
+    for (let i = 1; i <= 12; i++) {
+      const monthName = new Date(0, i - 1).toLocaleString('default', { month: 'long' });
+      const paid = payments[String(i)] === true;
+
+      const div = document.createElement("div");
+      div.textContent = monthName;
+      div.dataset.month = i;
+      div.className = paid
+        ? "px-3 py-2 bg-green-100 text-green-800 rounded text-center text-sm cursor-not-allowed"
+        : "px-3 py-2 bg-red-100 text-red-800 rounded text-center text-sm cursor-pointer hover:bg-blue-100";
+
+      if (!paid) {
+        div.addEventListener('click', () => {
+          div.classList.toggle('bg-blue-600');
+          div.classList.toggle('text-white');
+          div.classList.toggle('bg-red-100');
+          div.classList.toggle('text-red-800');
+          div.classList.toggle('selected');
+        });
+      }
+
+      monthsContainer.appendChild(div);
+    }
+  }
+
+  memberIdInput.addEventListener('change', fetchPayments);
+  yearSelect.addEventListener('change', fetchPayments);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const selected = Array.from(monthsContainer.querySelectorAll('.selected'))
+                          .map(div => div.dataset.month);
+
+    if (!selected.length) {
+      statusMessage.innerHTML = `<span class="text-red-600">❌ Select at least one month.</span>`;
+      return;
+    }
+
+    const formData = new FormData(form);
+    formData.delete('months');
+    selected.forEach(m => formData.append('months', m));
+
+    try {
+      const resp = await fetch(form.action, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
+        body: formData
+      });
+
+      const data = await resp.json();
+
+      if (resp.ok && data.status === 'Success') {
+        statusMessage.innerHTML = `<span class="text-green-600">✅ Payment recorded successfully!</span>`;
+        form.reset();
+        monthsContainer.innerHTML = '';
+        memberInfo.textContent = '';
+      } else {
+        statusMessage.innerHTML = `<span class="text-red-600">❌ ${data.error || 'Error occurred'}</span>`;
+      }
+    } catch (err) {
+      statusMessage.innerHTML = `<span class="text-red-600">❌ Network error</span>`;
+    }
+  });
+</script>
+{% endblock %}
